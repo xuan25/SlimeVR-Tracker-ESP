@@ -24,10 +24,10 @@ namespace I2CSCAN
             return addr1;
         if(!I2CSCAN::isI2CExist(addr2)) {
             if(scanIfNotFound) {
-                Serial.println("[ERR] I2C: Can't find I2C device on provided addresses, scanning for all I2C devices and returning");
+                Serial.printf("[ERR] I2C: Can't find I2C device on provided addresses (0x%02x and 0x%02x), scanning for all I2C devices and returning\n", addr1, addr2);
                 I2CSCAN::scani2cports();
             } else {
-                Serial.println("[ERR] I2C: Can't find I2C device on provided addresses");
+                Serial.printf("[ERR] I2C: Can't find I2C device on provided addresses (0x%02x and 0x%02x)", addr1, addr2);
             }
             return 0;
         }
