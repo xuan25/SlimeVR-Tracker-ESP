@@ -44,7 +44,14 @@ namespace SlimeVR
 
             bool sharedIMUAddresses = (PRIMARY_IMU_ADDRESS_ONE == SECONDARY_IMU_ADDRESS_ONE && PRIMARY_IMU_ADDRESS_TWO == SECONDARY_IMU_ADDRESS_TWO);
             {
-                firstIMUAddress = I2CSCAN::pickDevice(PRIMARY_IMU_ADDRESS_ONE, PRIMARY_IMU_ADDRESS_TWO, true);
+                // Try to find sensor for 2.5s in case it needs time to boot
+                unsigned long start = millis();
+                while(millis() - start < 2500 && firstIMUAddress == 0) {
+                    firstIMUAddress = I2CSCAN::pickDevice(PRIMARY_IMU_ADDRESS_ONE, PRIMARY_IMU_ADDRESS_TWO, false);
+                    delay(100);
+                }
+                if(firstIMUAddress == 0)
+                    firstIMUAddress = I2CSCAN::pickDevice(PRIMARY_IMU_ADDRESS_ONE, PRIMARY_IMU_ADDRESS_TWO, true);
                 uint8_t sensorID = 0;
                 if(sharedIMUAddresses && firstIMUAddress != PRIMARY_IMU_ADDRESS_ONE)
                 {

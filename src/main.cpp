@@ -86,10 +86,10 @@ void setup()
     Wire.begin(static_cast<int>(PIN_IMU_SDA), static_cast<int>(PIN_IMU_SCL));
 
 #ifdef ESP8266
-    Wire.setClockStretchLimit(1500000L); // Default stretch limit 150mS
+    Wire.setClockStretchLimit(150000L); // Default stretch limit 150mS
 #endif
 #ifdef ESP32 // Counterpart on ESP32 to ClockStretchLimit
-    Wire.setTimeOut(1500);
+    Wire.setTimeOut(150);
 #endif
     Wire.setClock(I2C_SPEED);
 

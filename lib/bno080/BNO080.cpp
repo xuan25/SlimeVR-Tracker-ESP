@@ -67,7 +67,7 @@ boolean BNO080::begin(uint8_t deviceAddress, TwoWire &wirePort, uint8_t intPin)
 	//Transmit packet on channel 2, 2 bytes
 	sendPacket(CHANNEL_CONTROL, 2);
 
-	uint32_t tInitialResetTimeMS = millis();
+	unsigned long tInitialResetTimeMS = millis();
 	bool tBoardInfoReceived = false;
 
 	// Wait max 2.5s for the product_id_response and ignore other packets received during that time.
