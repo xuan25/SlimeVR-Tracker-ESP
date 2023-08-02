@@ -381,6 +381,29 @@ void Connection::sendFeatureFlags() {
 	MUST(endPacket());
 }
 
+// PACKET_POSITION_DATA 23
+void Connection::sendPositiondata(
+	uint8_t sensorId,
+	Vector3* const vector,
+	uint8_t dataType,
+	uint8_t accuracyInfo
+) {
+	MUST(m_Connected);
+
+	MUST(beginPacket());
+
+	MUST(sendPacketType(PACKET_POSITION_DATA));
+	MUST(sendPacketNumber());
+	MUST(sendByte(sensorId));
+	MUST(sendByte(dataType));
+	MUST(sendFloat(vector->x));
+	MUST(sendFloat(vector->y));
+	MUST(sendFloat(vector->z));
+	MUST(sendByte(accuracyInfo));
+
+	MUST(endPacket());
+}
+
 void Connection::sendTrackerDiscovery() {
 	MUST(!m_Connected);
 

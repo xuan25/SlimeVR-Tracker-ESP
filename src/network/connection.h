@@ -74,6 +74,14 @@ public:
 	// PACKET_FEATURE_FLAGS 22
 	void sendFeatureFlags();
 
+	// PACKET_POSITION_DATA 23
+	void sendPositiondata(
+		uint8_t sensorId,
+		Vector3* const vector,
+		uint8_t dataType,
+		uint8_t accuracyInfo
+	);
+
 #if ENABLE_INSPECTION
 	void sendInspectionRawIMUData(
 		uint8_t sensorId,

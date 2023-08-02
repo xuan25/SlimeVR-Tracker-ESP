@@ -72,7 +72,12 @@ private:
 class FirmwareFeatures {
 public:
     enum EFirmwareFeatureFlags: uint32_t {
-        // EXAMPLE_FEATURE,
+        // The tracker sends all information that firmware 0.3.3 and below sends
+        LEGACY_SLIMEVR_TRACKER,
+        // The tracker sends rotation data
+        ROTATION_DATA,
+        // The tracker sends position data
+        POSITION_DATA,
         
         // Add new flags here
         
@@ -81,7 +86,8 @@ public:
 
     // Flags to send
     static constexpr const std::initializer_list<EFirmwareFeatureFlags> flagsEnabled = {
-        // EXAMPLE_FEATURE,
+        LEGACY_SLIMEVR_TRACKER,
+        ROTATION_DATA,
 
         // Add enabled flags here
     };
