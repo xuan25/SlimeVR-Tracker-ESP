@@ -89,7 +89,7 @@ bool Connection::endPacket() {
 		MUST_TRANSFER_BOOL((innerPacketSize > 0));
 
 		m_IsBundle = false;
-		
+
 		if (m_BundlePacketInnerCount == 0) {
 			sendPacketType(PACKET_BUNDLE);
 			sendPacketNumber();
@@ -128,13 +128,13 @@ bool Connection::endBundle() {
 	MUST_TRANSFER_BOOL(m_IsBundle);
 
 	m_IsBundle = false;
-	
+
 	MUST_TRANSFER_BOOL((m_BundlePacketInnerCount > 0));
 
 	return endPacket();
 }
 
-size_t Connection::write(const uint8_t *buffer, size_t size) {
+size_t Connection::write(const uint8_t* buffer, size_t size) {
 	if (m_IsBundle) {
 		if (m_BundlePacketPosition + size > sizeof(m_Packet)) {
 			return 0;
@@ -146,9 +146,7 @@ size_t Connection::write(const uint8_t *buffer, size_t size) {
 	return m_UDP.write(buffer, size);
 }
 
-size_t Connection::write(uint8_t byte) {
-	return write(&byte, 1);
-}
+size_t Connection::write(uint8_t byte) { return write(&byte, 1); }
 
 bool Connection::sendFloat(float f) {
 	convert_to_chars(f, m_Buf);
@@ -158,19 +156,19 @@ bool Connection::sendFloat(float f) {
 
 bool Connection::sendByte(uint8_t c) { return write(&c, 1) != 0; }
 
-bool Connection::sendShort(uint16_t i) {
+bool Connection::sendShort(int16_t i) {
 	convert_to_chars(i, m_Buf);
 
 	return write(m_Buf, sizeof(i)) != 0;
 }
 
-bool Connection::sendInt(uint32_t i) {
+bool Connection::sendInt(int32_t i) {
 	convert_to_chars(i, m_Buf);
 
 	return write(m_Buf, sizeof(i)) != 0;
 }
 
-bool Connection::sendLong(uint64_t l) {
+bool Connection::sendLong(int64_t l) {
 	convert_to_chars(l, m_Buf);
 
 	return write(m_Buf, sizeof(l)) != 0;
@@ -534,7 +532,7 @@ void Connection::returnLastPacket(int len) {
 	MUST(endPacket());
 }
 
-void Connection::updateSensorState(std::vector<Sensor *> & sensors) {
+void Connection::updateSensorState(std::vector<Sensor*>& sensors) {
 	if (millis() - m_LastSensorInfoPacketTimestamp <= 1000) {
 		return;
 	}
@@ -548,7 +546,7 @@ void Connection::updateSensorState(std::vector<Sensor *> & sensors) {
 	}
 }
 
-void Connection::maybeRequestFeatureFlags() {	
+void Connection::maybeRequestFeatureFlags() {
 	if (m_ServerFeatures.isAvailable() || m_FeatureFlagsRequestAttempts >= 15) {
 		return;
 	}
@@ -580,6 +578,8 @@ void Connection::searchForServer() {
 			m_UDP.remotePort()
 		);
 		m_Logger.traceArray("UDP packet contents: ", m_Packet, len);
+#else
+		(void)len;
 #endif
 
 		// Handshake is different, it has 3 in the first byte, not the 4th, and data
@@ -594,9 +594,9 @@ void Connection::searchForServer() {
 			m_ServerPort = m_UDP.remotePort();
 			m_LastPacketTimestamp = millis();
 			m_Connected = true;
-			
+
 			m_FeatureFlagsRequestAttempts = 0;
-			m_ServerFeatures = ServerFeatures { };
+			m_ServerFeatures = ServerFeatures{};
 
 			statusManager.setStatus(SlimeVR::Status::SERVER_CONNECTING, false);
 			ledManager.off();
@@ -626,7 +626,11 @@ void Connection::searchForServer() {
 
 void Connection::reset() {
 	m_Connected = false;
-	std::fill(m_AckedSensorState, m_AckedSensorState+MAX_IMU_COUNT, SensorStatus::SENSOR_OFFLINE);
+	std::fill(
+		m_AckedSensorState,
+		m_AckedSensorState + MAX_IMU_COUNT,
+		SensorStatus::SENSOR_OFFLINE
+	);
 
 	m_UDP.begin(m_ServerPort);
 
@@ -634,7 +638,7 @@ void Connection::reset() {
 }
 
 void Connection::update() {
-	std::vector<Sensor *> & sensors = sensorManager.getSensors();
+	std::vector<Sensor*>& sensors = sensorManager.getSensors();
 
 	updateSensorState(sensors);
 	maybeRequestFeatureFlags();
@@ -648,7 +652,11 @@ void Connection::update() {
 		statusManager.setStatus(SlimeVR::Status::SERVER_CONNECTING, true);
 
 		m_Connected = false;
-		std::fill(m_AckedSensorState, m_AckedSensorState+MAX_IMU_COUNT, SensorStatus::SENSOR_OFFLINE);
+		std::fill(
+			m_AckedSensorState,
+			m_AckedSensorState + MAX_IMU_COUNT,
+			SensorStatus::SENSOR_OFFLINE
+		);
 		m_Logger.warn("Connection to server timed out");
 
 		return;
@@ -720,16 +728,15 @@ void Connection::update() {
 			}
 
 			bool hadFlags = m_ServerFeatures.isAvailable();
-			
 			uint32_t flagsLength = len - 12;
 			m_ServerFeatures = ServerFeatures::from(&m_Packet[12], flagsLength);
 
 			if (!hadFlags) {
-				#if PACKET_BUNDLING != PACKET_BUNDLING_DISABLED
-					if (m_ServerFeatures.has(ServerFeatures::PROTOCOL_BUNDLE_SUPPORT)) {
-						m_Logger.debug("Server supports packet bundling");
-					}
-				#endif
+#if PACKET_BUNDLING != PACKET_BUNDLING_DISABLED
+				if (m_ServerFeatures.has(ServerFeatures::PROTOCOL_BUNDLE_SUPPORT)) {
+					m_Logger.debug("Server supports packet bundling");
+				}
+#endif
 			}
 
 			break;
