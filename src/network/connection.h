@@ -26,11 +26,11 @@
 #include <Arduino.h>
 #include <WiFiUdp.h>
 
+#include "featureflags.h"
 #include "globals.h"
 #include "quat.h"
 #include "sensors/sensor.h"
 #include "wifihandler.h"
-#include "featureflags.h"
 
 namespace SlimeVR {
 namespace Network {
@@ -115,28 +115,25 @@ public:
 	);
 #endif
 
-	const ServerFeatures& getServerFeatureFlags() {
-		return m_ServerFeatures;
-	}
+	const ServerFeatures& getServerFeatureFlags() { return m_ServerFeatures; }
 
 	bool beginBundle();
 	bool endBundle();
 
 private:
-	void updateSensorState(std::vector<Sensor *> & sensors);
+	void updateSensorState(std::vector<Sensor*>& sensors);
 	void maybeRequestFeatureFlags();
 
 	bool beginPacket();
 	bool endPacket();
 
-	size_t write(const uint8_t *buffer, size_t size);
-	size_t write(uint8_t byte);
+	size_t write(const uint8_t* buffer, size_t size);
 
 	bool sendPacketType(uint8_t type);
 	bool sendPacketNumber();
 	bool sendFloat(float f);
 	bool sendByte(uint8_t c);
-	bool sendShort(int16_t i);
+	bool sendU16(uint16_t c);
 	bool sendInt(int32_t i);
 	bool sendLong(int64_t l);
 	bool sendBytes(const uint8_t* c, size_t length);
@@ -160,7 +157,11 @@ private:
 	SlimeVR::Logging::Logger m_Logger = SlimeVR::Logging::Logger("UDPConnection");
 
 	WiFiUDP m_UDP;
-	unsigned char m_Packet[128];  // buffer for incoming packets
+	/*
+	  The current incoming packet that is being handled
+	  TODO: remove this from the class and make it a local variable
+	*/
+	uint8_t m_Packet[128];
 	uint64_t m_PacketNumber = 0;
 
 	int m_ServerPort = 6969;
@@ -176,7 +177,13 @@ private:
 	ServerFeatures m_ServerFeatures{};
 
 	bool m_IsBundle = false;
-	uint16_t m_BundlePacketPosition = 0;
+	bool m_BundleFinished = false;
+	bool m_BundlePartFinished = false;
+	/* The packet that is currently being bundled */
+	uint8_t m_BundledPacket[128];
+	/* Position in `m_BundledPacket` */
+	uint16_t m_BundledPacketsPosition = 0;
+	/* Count of packets that are in the currently forming bundle */
 	uint16_t m_BundlePacketInnerCount = 0;
 
 	unsigned char m_Buf[8];

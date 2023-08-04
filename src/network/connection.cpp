@@ -67,7 +67,9 @@ namespace Network {
 
 bool Connection::beginPacket() {
 	if (m_IsBundle) {
-		m_BundlePacketPosition = 0;
+		m_BundledPacketsPosition = 0;
+		m_BundlePartFinished = false;
+
 		return true;
 	}
 
@@ -84,22 +86,21 @@ bool Connection::beginPacket() {
 
 bool Connection::endPacket() {
 	if (m_IsBundle) {
-		uint32_t innerPacketSize = m_BundlePacketPosition;
+		m_BundlePartFinished = true;
 
-		MUST_TRANSFER_BOOL((innerPacketSize > 0));
+		auto innerPacketSize = m_BundledPacketsPosition;
 
-		m_IsBundle = false;
-
-		if (m_BundlePacketInnerCount == 0) {
-			sendPacketType(PACKET_BUNDLE);
-			sendPacketNumber();
-		}
-		sendShort(innerPacketSize);
-		sendBytes(m_Packet, innerPacketSize);
+		MUST_TRANSFER_BOOL(sendU16(innerPacketSize));
+		MUST_TRANSFER_BOOL(sendBytes(m_BundledPacket, innerPacketSize));
 
 		m_BundlePacketInnerCount++;
-		m_IsBundle = true;
+		m_BundledPacketsPosition = 0;
+
 		return true;
+	}
+
+	if (m_BundleFinished) {
+		m_BundleFinished = false;
 	}
 
 	int r = m_UDP.endPacket();
@@ -114,13 +115,20 @@ bool Connection::endPacket() {
 }
 
 bool Connection::beginBundle() {
+	memset(m_BundledPacket, 0, sizeof(m_BundledPacket));
+	m_BundlePacketInnerCount = 0;
+
 	MUST_TRANSFER_BOOL(m_ServerFeatures.has(ServerFeatures::PROTOCOL_BUNDLE_SUPPORT));
 	MUST_TRANSFER_BOOL(m_Connected);
 	MUST_TRANSFER_BOOL(!m_IsBundle);
 	MUST_TRANSFER_BOOL(beginPacket());
 
+	MUST_TRANSFER_BOOL(sendPacketType(PACKET_BUNDLE));
+	MUST_TRANSFER_BOOL(sendPacketNumber());
+
 	m_IsBundle = true;
-	m_BundlePacketInnerCount = 0;
+	m_BundleFinished = false;
+	m_BundlePartFinished = false;
 	return true;
 }
 
@@ -128,25 +136,27 @@ bool Connection::endBundle() {
 	MUST_TRANSFER_BOOL(m_IsBundle);
 
 	m_IsBundle = false;
-
-	MUST_TRANSFER_BOOL((m_BundlePacketInnerCount > 0));
+	m_BundleFinished = true;
+	m_BundlePartFinished = false;
 
 	return endPacket();
 }
 
 size_t Connection::write(const uint8_t* buffer, size_t size) {
-	if (m_IsBundle) {
-		if (m_BundlePacketPosition + size > sizeof(m_Packet)) {
+	if (m_IsBundle && !m_BundlePartFinished) {
+		if (m_BundledPacketsPosition + size > sizeof(m_BundledPacket)) {
+			m_Logger.error("Bundled packet too large");
 			return 0;
 		}
-		memcpy(m_Packet + m_BundlePacketPosition, buffer, size);
-		m_BundlePacketPosition += size;
+
+		memcpy(m_BundledPacket + m_BundledPacketsPosition, buffer, size);
+		m_BundledPacketsPosition += size;
+
 		return size;
 	}
+
 	return m_UDP.write(buffer, size);
 }
-
-size_t Connection::write(uint8_t byte) { return write(&byte, 1); }
 
 bool Connection::sendFloat(float f) {
 	convert_to_chars(f, m_Buf);
@@ -156,7 +166,7 @@ bool Connection::sendFloat(float f) {
 
 bool Connection::sendByte(uint8_t c) { return write(&c, 1) != 0; }
 
-bool Connection::sendShort(int16_t i) {
+bool Connection::sendU16(uint16_t i) {
 	convert_to_chars(i, m_Buf);
 
 	return write(m_Buf, sizeof(i)) != 0;
@@ -197,13 +207,7 @@ bool Connection::sendShortString(const char* str) {
 	return true;
 }
 
-bool Connection::sendPacketType(uint8_t type) {
-	MUST_TRANSFER_BOOL(sendByte(0));
-	MUST_TRANSFER_BOOL(sendByte(0));
-	MUST_TRANSFER_BOOL(sendByte(0));
-
-	return sendByte(type);
-}
+bool Connection::sendPacketType(uint8_t type) { return sendInt(type); }
 
 bool Connection::sendLongString(const char* str) {
 	int size = strlen(str);
@@ -641,12 +645,13 @@ void Connection::update() {
 	std::vector<Sensor*>& sensors = sensorManager.getSensors();
 
 	updateSensorState(sensors);
-	maybeRequestFeatureFlags();
 
 	if (!m_Connected) {
 		searchForServer();
 		return;
 	}
+
+	maybeRequestFeatureFlags();
 
 	if (m_LastPacketTimestamp + TIMEOUT < millis()) {
 		statusManager.setStatus(SlimeVR::Status::SERVER_CONNECTING, true);
