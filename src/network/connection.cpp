@@ -118,7 +118,8 @@ bool Connection::beginBundle() {
 	memset(m_BundledPacket, 0, sizeof(m_BundledPacket));
 	m_BundlePacketInnerCount = 0;
 
-	MUST_TRANSFER_BOOL(m_ServerFeatures.has(ServerFeatures::PROTOCOL_BUNDLE_SUPPORT));
+	MUST_TRANSFER_BOOL(m_ServerFeatures.has(EServerFeatureFlags::PROTOCOL_BUNDLE_SUPPORT
+	));
 	MUST_TRANSFER_BOOL(m_Connected);
 	MUST_TRANSFER_BOOL(!m_IsBundle);
 	MUST_TRANSFER_BOOL(beginPacket());
@@ -378,7 +379,8 @@ void Connection::sendFeatureFlags() {
 
 	MUST(sendPacketType(PACKET_FEATURE_FLAGS));
 	MUST(sendPacketNumber());
-	MUST(write(FirmwareFeatures::flags.data(), FirmwareFeatures::flags.size()));
+	auto packedFeatures = m_FirmwareFeatures.pack();
+	MUST(write(packedFeatures.data(), packedFeatures.size()));
 
 	MUST(endPacket());
 }
@@ -600,7 +602,7 @@ void Connection::searchForServer() {
 			m_Connected = true;
 
 			m_FeatureFlagsRequestAttempts = 0;
-			m_ServerFeatures = ServerFeatures{};
+			m_ServerFeatures = FeatureFlags<EServerFeatureFlags>();
 
 			statusManager.setStatus(SlimeVR::Status::SERVER_CONNECTING, false);
 			ledManager.off();
@@ -734,11 +736,13 @@ void Connection::update() {
 
 			bool hadFlags = m_ServerFeatures.isAvailable();
 			uint32_t flagsLength = len - 12;
-			m_ServerFeatures = ServerFeatures::from(&m_Packet[12], flagsLength);
+			m_ServerFeatures
+				= FeatureFlags<EServerFeatureFlags>(&m_Packet[12], flagsLength);
 
 			if (!hadFlags) {
 #if PACKET_BUNDLING != PACKET_BUNDLING_DISABLED
-				if (m_ServerFeatures.has(ServerFeatures::PROTOCOL_BUNDLE_SUPPORT)) {
+				if (m_ServerFeatures.has(EServerFeatureFlags::PROTOCOL_BUNDLE_SUPPORT
+					)) {
 					m_Logger.debug("Server supports packet bundling");
 				}
 #endif

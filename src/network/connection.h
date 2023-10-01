@@ -37,6 +37,9 @@ namespace Network {
 
 class Connection {
 public:
+	Connection()
+		: m_FirmwareFeatures(m_EnabledFirmwareFeatures) {}
+
 	void searchForServer();
 	void update();
 	void reset();
@@ -115,7 +118,7 @@ public:
 	);
 #endif
 
-	const ServerFeatures& getServerFeatureFlags() { return m_ServerFeatures; }
+	const auto getServerFeatureFlags() { return m_ServerFeatures; }
 
 	bool beginBundle();
 	bool endBundle();
@@ -174,7 +177,12 @@ private:
 
 	uint8_t m_FeatureFlagsRequestAttempts = 0;
 	unsigned long m_FeatureFlagsRequestTimestamp = millis();
-	ServerFeatures m_ServerFeatures{};
+	FeatureFlags<EServerFeatureFlags> m_ServerFeatures;
+	std::unordered_map<EFirmwareFeatureFlags, bool, EnumClassHash>
+		m_EnabledFirmwareFeatures
+		= {{EFirmwareFeatureFlags::LEGACY_SLIMEVR_TRACKER, true},
+		   {EFirmwareFeatureFlags::ROTATION_DATA, true}};
+	FeatureFlags<EFirmwareFeatureFlags> m_FirmwareFeatures;
 
 	bool m_IsBundle = false;
 	bool m_BundleFinished = false;
