@@ -46,8 +46,15 @@ class SoftFusionSensor : public Sensor {
 		= ((32768. / imu::GyroSensitivity) / 32768.) * (PI / 180.0);
 	static constexpr double AScale = CONST_EARTH_GRAVITY / imu::AccelSensitivity;
 
-	static constexpr bool HasMotionlessCalib
-		= requires(imu& i) { typename imu::MotionlessCalibrationData; };
+	// Helper to detect MotionlessCalibrationData
+    template <typename U, typename = void>
+    struct HasMotionlessCalibrationDataHelper : std::false_type {};
+
+    template <typename U>
+    struct HasMotionlessCalibrationDataHelper<U, std::void_t<typename U::MotionlessCalibrationData>> : std::true_type {};
+
+	static constexpr bool HasMotionlessCalib = HasMotionlessCalibrationDataHelper<imu>::value;
+
 	static constexpr size_t MotionlessCalibDataSize() {
 		if constexpr (HasMotionlessCalib) {
 			return sizeof(typename imu::MotionlessCalibrationData);
